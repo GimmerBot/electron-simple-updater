@@ -1,12 +1,15 @@
 'use strict';
 
-const { app, autoUpdater } = require('electron');
-const events               = require('events');
-const exec                 = require('child_process').exec;
+const {
+  app,
+  autoUpdater
+} = require('electron');
+const events = require('events');
+const exec = require('child_process').exec;
 
-const win32            = require('./lib/win32');
-const linux            = require('./lib/linux');
-const getUpdatesMeta   = require('./lib/get-updates-meta');
+const win32 = require('./lib/win32');
+const linux = require('./lib/linux');
+const getUpdatesMeta = require('./lib/get-updates-meta');
 const normalizeOptions = require('./lib/normalize-options');
 
 class SimpleUpdater extends events.EventEmitter {
@@ -15,21 +18,21 @@ class SimpleUpdater extends events.EventEmitter {
 
     // Just for better auto-complete
     this.options = {
-      autoDownload:       true,
-      build:              '',
-      channel:            'prod',
+      autoDownload: true,
+      build: '',
+      channel: 'prod',
       checkUpdateOnStart: true,
-      disabled:           false,
-      empty:              true, // Mark that it's not initialized
-      logger:             console,
-      version:            '',
-      url:                ''
+      disabled: false,
+      empty: true, // Mark that it's not initialized
+      logger: console,
+      version: '',
+      url: ''
     };
 
     this.meta = {
-      empty:     true, // Mark that it's not initialized
-      version:   '',
-      update:    ''
+      empty: true, // Mark that it's not initialized
+      version: '',
+      update: ''
     };
 
     autoUpdater.on('update-downloaded', () => {
@@ -212,6 +215,34 @@ class SimpleUpdater extends events.EventEmitter {
     this.options.logger.info(`Downloading updates from ${feedUrl}`);
 
     return this;
+  }
+
+  /**
+   * Download an update by url
+   * @fires SimpleUpdater#update-downloading
+   * @fires SimpleUpdater#update-downloaded
+   * @fires SimpleUpdater#error
+   * @return {SimpleUpdater}
+   */
+  downloadUpdate(downloadUrl) {
+    /**
+     * @event SimpleUpdater#update-downloading
+     * @param {object} meta Update metadata
+     */
+    this.emit('update-downloading', this.meta);
+
+    if (process.platform === 'linux') {
+      linux.downloadUpdate(downloadUrl)
+        .then((appImagePath) => {
+          this.appImagePath = appImagePath;
+          const version = this.meta.version;
+          this.options.logger.info(`New version ${version} has been downloaded`);
+          this.emit('update-downloaded', this.meta);
+        })
+        .catch(e => this.emit('error', e));
+    } else {
+      throw 'Not implemented';
+    }
   }
 
   /**
